@@ -1,0 +1,52 @@
+{% if customer.tags != blank %}
+  {% for mf in base_product.metafields.sawholesale %}
+    {% capture product_customer_tag %}{{ mf | first | replace: 'discount_', '' }}{% endcapture %}
+    {% if customer.tags contains product_customer_tag %}
+      {% assign saw_has_discount = true %}
+      {% assign discount_key = product_customer_tag | prepend: 'discount_' %}
+      {% assign price_key = product_customer_tag | prepend: 'price_' %}
+      {% assign saw_discount = base_product.metafields.sawholesale[discount_key] | divided_by: 100.0 %}
+    
+    // CUSTOM CODE START
+	  {% capture 'wc_data' %}
+      {% for variant in product.variants %}
+		{% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.0 %}
+		{% if wc_variant_price != 0 %}
+        	{{ variant.id | json }}: {{ wc_variant_price| json }}
+		{% else %}
+			{{ variant.id | json }}: {{ variant.price | divided_by: 100.0 | json }}
+		{% endif %}
+        {% unless forloop.last %},{% endunless %}
+      {% endfor %}
+      {% endcapture %}
+		
+	  <script class="wholesale-club-json">
+        
+        // Function to find value in JSON object based on key (CurrentMediaID)
+        function getValues(obj, key) {
+            var objects = [];
+            for (var i in obj) {
+                if (!obj.hasOwnProperty(i)) continue;
+                if (typeof obj[i] == 'object') {
+                    objects = objects.concat(getValues(obj[i], key));
+                } else if (i == key) {
+                    objects.push(obj[i]);
+                }
+            }
+            return objects;
+        }
+        
+        function wholesaleVariantChanged(data) {
+          	var wcData = { {{ wc_data }} }
+        	var wcPrice = getValues(wcData,data)[0];
+          
+         	var priceContainer = $('span.main-price');
+      		priceContainer.text('$' + wcPrice + '.00');
+        }
+        
+      </script>
+      // CUSTOM CODE END
+
+    {% endif %}
+  {% endfor %}
+{% endif %}
