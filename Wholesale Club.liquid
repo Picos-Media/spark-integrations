@@ -1,51 +1,54 @@
-{% if customer.tags != blank %}
-  {% for mf in base_product.metafields.sawholesale %}
-    {% capture product_customer_tag %}{{ mf | first | replace: 'discount_', '' }}{% endcapture %}
-    {% if customer.tags contains product_customer_tag %}
-      {% assign saw_has_discount = true %}
-      {% assign discount_key = product_customer_tag | prepend: 'discount_' %}
-      {% assign price_key = product_customer_tag | prepend: 'price_' %}
-      {% assign saw_discount = base_product.metafields.sawholesale[discount_key] | divided_by: 100.0 %}
-    
-    // CUSTOM CODE START
+	  {% comment %} Capture JSON pricing data including Wholesale Club Price {% endcomment %}
 	  {% capture 'wc_data' %}
-      {% for variant in product.variants %}
-		{% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.0 %}
-		{% if wc_variant_price != 0 %}
-        	{{ variant.id | json }}: {{ wc_variant_price| json }}
-		{% else %}
-			{{ variant.id | json }}: {{ variant.price | divided_by: 100.0 | json }}
-		{% endif %}
-        {% unless forloop.last %},{% endunless %}
-      {% endfor %}
+      	{% for variant in product.variants %}
+		{% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.00 %}
+                "{{ variant.id | json }}": {
+					{% comment %} If Wholesale Club Price doesn't exist, define it as the Shopify Variant Price {% endcomment %}
+                    "wcPrice": {% if wc_variant_price != 0 %}{{ wc_variant_price | json }}{% else %}{{ variant.price | divided_by: 100.0 | json }}{% endif %},
+                    "rePrice": {{ variant.price | divided_by: 100.00 | json }},
+					"coPrice": {{ variant.compare_at_price | divided_by: 100.00 | json }}
+                }{% unless forloop.last %},{% endunless %}
+      	{% endfor %}
       {% endcapture %}
 		
 	  <script class="wholesale-club-json">
         
-        // Function to find value in JSON object based on key (Variant ID)
-        function getValues(obj, key) {
-            var objects = [];
-            for (var i in obj) {
-                if (!obj.hasOwnProperty(i)) continue;
-                if (typeof obj[i] == 'object') {
-                    objects = objects.concat(getValues(obj[i], key));
-                } else if (i == key) {
-                    objects.push(obj[i]);
-                }
-            }
-            return objects;
-        }
-        
-        function wholesaleVariantChanged(data) {
-          	var wcData = { {{ wc_data }} }
-        	var wcPrice = getValues(wcData,data)[0];
+             // This function is called from the custom-events.js file on variant change event
+            function wholesaleVariantChanged(data, error) {
           
-         	var priceContainer = $('span.main-price');
-      		priceContainer.text('$' + wcPrice + '.00'); // Our prices never have cents but we've included two decimal points for UI purposes
+          	var priceContainer = $('.product__top span.main-price'); // Define Pricing Container
+          	var compareContainer = $('.product__top .product__price s'); // Define Compare At Price Container
+			
+          	// Check if product variant exists, if not displat as "Unavailable"
+            if(data === null) {
+			  priceContainer.text('Unavailable');
+              compareContainer.text('');
+            } else {
+              // If product variant is available define json with pricing details
+              var wcData = { {{ wc_data }} };
+
+              var wcPrice = wcData[data.id].wcPrice; // Wholesale Club Price
+              var rePrice = wcData[data.id].rePrice; // Retail Price
+              var coPrice = wcData[data.id].coPrice; // Compare At Price
+              
+              // Display product price
+              priceContainer.text('$' + wcPrice + '.00');
+              
+              // Check if the Compare At Price is greater than the Retail Price
+              if(coPrice > rePrice) {
+                  compareContainer.text('$' + coPrice + '.00');
+              // If not, check if the Retail Price is greater than the Wholesale Club Price
+              } else if(wcPrice < rePrice) {
+                  compareContainer.text('$' + rePrice + '.00');
+              // If not, this means that the Retail Price is the same as the Wholesale Club Price
+              // and the Compare At Price is not provided ($0), so therefore remove text from Compare At Price container
+              } else {
+                  compareContainer.text('');
+              }
+            }
         }
         
       </script>
-      // CUSTOM CODE END
 
     {% endif %}
   {% endfor %}
