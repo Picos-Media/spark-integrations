@@ -1,12 +1,12 @@
       {% comment %} Capture JSON pricing data including Wholesale Club Price {% endcomment %}
       {% capture 'wc_data' %}
       	{% for variant in product.variants %}
-		{% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.00 %}
-                "{{ variant.id | json }}": {
+		    {% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.00 %}
+              "{{ variant.id | json }}": {
 	            {% comment %} If Wholesale Club Price doesn't exist, define it as the Shopify Variant Price {% endcomment %}
                     "wcPrice": {% if wc_variant_price != 0 %}{{ wc_variant_price | json }}{% else %}{{ variant.price | divided_by: 100.0 | json }}{% endif %},
                     "rePrice": {{ variant.price | divided_by: 100.00 | json }},
-					"coPrice": {{ variant.compare_at_price | divided_by: 100.00 | json }}
+					          "coPrice": {{ variant.compare_at_price | divided_by: 100.00 | json }}
                 }{% unless forloop.last %},{% endunless %}
       	{% endfor %}
       {% endcapture %}
