@@ -1,5 +1,5 @@
-	  {% comment %} Capture JSON pricing data including Wholesale Club Price {% endcomment %}
-	  {% capture 'wc_data' %}
+      {% comment %} Capture JSON pricing data including Wholesale Club Price {% endcomment %}
+      {% capture 'wc_data' %}
       	{% for variant in product.variants %}
 		{% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.00 %}
                 "{{ variant.id | json }}": {
