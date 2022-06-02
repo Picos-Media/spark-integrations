@@ -1,27 +1,36 @@
-      {% comment %} Capture JSON pricing data including Wholesale Club Price {% endcomment %}
-      {% capture 'wc_data' %}
+{% if customer.tags != blank %}
+  {% for mf in base_product.metafields.sawholesale %}
+    {% capture product_customer_tag %}{{ mf | first | replace: 'discount_', '' }}{% endcapture %}
+    {% if customer.tags contains product_customer_tag %}
+      {% assign saw_has_discount = true %}
+      {% assign discount_key = product_customer_tag | prepend: 'discount_' %}
+      {% assign price_key = product_customer_tag | prepend: 'price_' %}
+      {% assign saw_discount = base_product.metafields.sawholesale[discount_key] | divided_by: 100.0 %}
+	  
+	  {% comment %} Capture JSON pricing data including Wholesale Club Price {% endcomment %}
+	  {% capture 'wc_data' %}
       	{% for variant in product.variants %}
-		    {% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.00 %}
-              "{{ variant.id | json }}": {
-	            {% comment %} If Wholesale Club Price doesn't exist, define it as the Shopify Variant Price {% endcomment %}
+		{% assign wc_variant_price = variant.metafields.sawholesale[price_key] | divided_by: 100.00 %}
+                "{{ variant.id | json }}": {
+					{% comment %} If Wholesale Club Price doesn't exist, define it as the Shopify Variant Price {% endcomment %}
                     "wcPrice": {% if wc_variant_price != 0 %}{{ wc_variant_price | json }}{% else %}{{ variant.price | divided_by: 100.0 | json }}{% endif %},
                     "rePrice": {{ variant.price | divided_by: 100.00 | json }},
-					          "coPrice": {{ variant.compare_at_price | divided_by: 100.00 | json }}
+					"coPrice": {{ variant.compare_at_price | divided_by: 100.00 | json }}
                 }{% unless forloop.last %},{% endunless %}
       	{% endfor %}
       {% endcapture %}
 		
 	  <script class="wholesale-club-json">
         
-             // This function is called from the custom-events.js file on variant change event
-            function wholesaleVariantChanged(data, error) {
+        // This function is called from the custom-events.js file on variant change event
+        function wholesaleVariantChanged(data, error) {
           
-                var priceContainer = $('.product__top span.main-price'); // Define Pricing Container
+          	var priceContainer = $('.product__top span.main-price'); // Define Pricing Container
           	var compareContainer = $('.product__top .product__price s'); // Define Compare At Price Container
 			
-            // Check if product variant exists, if not displat as "Unavailable"
+          	// Check if product variant exists, if not displat as "Unavailable"
             if(data === null) {
-	      priceContainer.text('Unavailable');
+			  priceContainer.text('Unavailable');
               compareContainer.text('');
             } else {
               // If product variant is available define json with pricing details
